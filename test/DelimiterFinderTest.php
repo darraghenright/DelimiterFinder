@@ -5,26 +5,32 @@ require_once 'PHPUnit/Autoload.php';
 
 class DelimiterFinderTest extends PHPUnit_Framework_TestCase
 {
+    /**
+     * Set up before tests
+     */
     public function setUp()
-    {
-        // @TODO: look at vfsStream for mocking files
-           
-        chmod(__DIR__ . '/files/non_readable.csv', 0000);
-    }
-    
-    public function tearDown()
-    {
-        chmod(__DIR__ . '/files/non_readable.csv', 0444);
+    {           
+        // make sure non-readable file is non-readable!
+        chmod(__DIR__ . '/files/not_readable.csv', 0000);
     }
     
     /**
-     * Omitting filepath constructor argument to 
-     * the constructor raises a standard PHP Error
-     *
-     * @group Constructor Tests
-     * @expectedException PHPUnit_Framework_Error
+     * Clean up after tests
      */
-    public function testMissingFilepathInConstructorRaisesError()
+    public function tearDown()
+    {
+        // change perms so we can commit the file ;)
+        chmod(__DIR__ . '/files/not_readable.csv', 0444);
+    }
+    
+    /**
+     * Omitting a filepath as an argument to 
+     * the constructor raises a PHP Error
+     *
+     * @group                       Constructor Tests
+     * @expectedException           PHPUnit_Framework_Error
+     */
+    public function testCreateObjectWithMissingArgument()
     {
         $finder = new DelimiterFinder();        
     }
@@ -33,13 +39,13 @@ class DelimiterFinderTest extends PHPUnit_Framework_TestCase
      * Providing a non-existent filepath as an argument to 
      * the constructor raises an InvalidArgumentException
      *
-     * @group Constructor Tests
-     * @expectedException InvalidArgumentException
-     * @expectedExceptionMessage The filepath files/path/to/non/existent/file.csv does not exist
+     * @group                       Constructor Tests
+     * @expectedException           InvalidArgumentException
+     * @expectedExceptionMessage    The file files/non_existent_file.csv does not exist
      */
-    public function testNonExistentFilepathInConstructorThrowsException()
+    public function testCreateObjectWithNonExistentFile()
     {
-        $filepath = 'files/path/to/non/existent/file.csv';
+        $filepath = 'files/non_existent_file.csv';
         $this->assertFalse(is_file($filepath));
         $finder = new DelimiterFinder($filepath);
     }
@@ -48,46 +54,44 @@ class DelimiterFinderTest extends PHPUnit_Framework_TestCase
      * Providing a non-readable filepath as an argument to 
      * the constructor throws an InvalidArgumentException
      *
-     * @group Constructor Tests
-     * @expectedException InvalidArgumentException
-     * @expectedExceptionMessage The filepath files/non_readable.csv cannot be read
+     * @group                       Constructor Tests
+     * @expectedException           InvalidArgumentException
+     * @expectedExceptionMessage    The file files/not_readable.csv cannot be read
      */
-    public function testNonReadableFilepathInConstructorThrowsException()
+    public function testCreateObjectWithNonReadableFile()
     {   
-        $filepath = 'files/non_readable.csv';
+        $filepath = 'files/not_readable.csv';
         $this->assertFileExists($filepath);
         $finder = new DelimiterFinder($filepath);
     }   
 
     /**
-     * @group Constructor Tests
-     * @expectedException RuntimeException
-     * @expectedExceptionMessage The filepath files/empty.csv is an empty file
+     * Providing a filepath to an empty file as an argument 
+     * to the constructor throws an InvalidArgumentException
+     *
+     * @group                       Constructor Tests
+     * @expectedException           RuntimeException
+     * @expectedExceptionMessage    The file files/empty.csv is empty
      */
-    public function testEmptyFileThrowsException()
+    public function testCreateObjectWithEmptyFile()
     {
         $filepath = 'files/empty.csv';
         $this->assertFileExists($filepath);
         $this->assertTrue(filesize($filepath) === 0);
         $finder = new DelimiterFinder($filepath);
     }
-
+        
     /**
-     * @group Constructor Tests
+     * Providing a valid filepath as an argument to 
+     * the constructor creates an instance
+     *
+     * @group                       Constructor Tests
      */
-    public function testValidFileInConstructorCreatesDelimiterFinder()
+    public function testObjectCreateWithValidFile()
     {    
-        $filepath = 'files/valid.csv';
+        $filepath = 'files/not_empty.csv';
         $this->assertFileExists($filepath);
         $finder = new DelimiterFinder($filepath);
         $this->assertInstanceOf('DelimiterFinder', $finder);
-    }
-
-    /**
-     * @group Constructor Tests    
-     */
-    public function testFileHasAtLeastTwoLines()
-    {
-        // implement
     }
 }

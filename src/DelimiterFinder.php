@@ -8,19 +8,19 @@ class DelimiterFinder
         
         if (!is_file($file)) {
             throw new InvalidArgumentException(sprintf(
-                'The filepath %s does not exist', $file
+                'The file %s does not exist', $file
             ));
         }
         
         if (!is_readable($file)) {
             throw new InvalidArgumentException(sprintf(
-                'The filepath %s cannot be read', $file
+                'The file %s cannot be read', $file
             ));
         }
         
         if (0 === filesize($file)) {
             throw new RuntimeException(sprintf(
-                'The filepath %s is an empty file', $file
+                'The file %s is empty', $file
             ));
         }
     }
