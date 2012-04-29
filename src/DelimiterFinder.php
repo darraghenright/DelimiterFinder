@@ -56,12 +56,8 @@ class DelimiterFinder
      */
     public function addDelimiter($delimiter)
     {
-        if (1 !== strlen($delimiter)) {
-            throw new UnexpectedValueException(
-                sprintf('The delimiter "%s" is not a single character', $delimiter)
-            );
-        }
-    
+        $this->validateDelimiter($delimiter);  
+        
         if (!in_array($delimiter, $this->delimiters)) {
             $this->delimiters[] = $delimiter;
         }
@@ -106,6 +102,22 @@ class DelimiterFinder
             );
         }
     }
+
+    /**
+     * Validate the file. Throw an exception if
+     * the string is not exactly one character
+     *
+     * @param  string $delimiter
+     * @throws UnexpectedValueException
+     */    
+    protected function validateDelimiter($delimiter)
+    {
+        if (1 !== strlen($delimiter)) {
+            throw new UnexpectedValueException(
+                sprintf('The delimiter "%s" is not a single character', $delimiter)
+            );
+        }
+    }
     
     /**
      * Determine a likely delimiter.
@@ -116,9 +128,9 @@ class DelimiterFinder
     {
         $handle = fopen($this->file, 'r');
         
-        $regex  = sprintf('/[^%s]/', implode($this->delimiters));
-        $lines  = array();
-        $loops  = 0;
+        $regex = sprintf('/[^%s]/', implode($this->delimiters));
+        $lines = array();
+        $loops = 0;
         
         while (!feof($handle)) {
         
@@ -129,11 +141,11 @@ class DelimiterFinder
             $lines[] = $count;
             
             if ($loops++ > 1) {
-                $result = call_user_func_array('array_intersect_assoc', $lines);
-                $k = count($result);
+                
+                $matched = call_user_func_array('array_intersect_assoc', $lines);
             
-                if ($k === 1) {
-                    $this->match = chr(key($result));
+                if (1 === count($matched)) {
+                    $this->match = chr(key($matched));
                     break;
                 }
             }

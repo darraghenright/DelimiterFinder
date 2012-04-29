@@ -7,24 +7,23 @@ require_once 'vfsStream/vfsStream.php';
 require_once __DIR__ . '/../src/DelimiterFinder.php';
 
 class DelimiterFinderTest extends PHPUnit_Framework_TestCase
-{    
-    // test with different line endings.... dreaded mac excel CR line endings
-    // ini_set('auto_detect_line_endings');
-    // mock data files!
-    
+{        
     /**
      * Setup mock filesystem elements
      */
     public function setUp()
-    {           
-        $root = vfsStream::newDirectory('files');
-        
-        vfsStreamWrapper::register();
-        vfsStreamWrapper::setRoot($root);       
-        
+    {   
+        $root = vfsStream::newDirectory('files');        
         $root->addChild(vfsStream::newFile('non_readable_file.csv', 0000));
         $root->addChild(vfsStream::newFile('readable_file.csv', 0444));
+
+        vfsStreamWrapper::register();
+        vfsStreamWrapper::setRoot($root);
         
+        // test with different line endings.... dreaded mac excel CR line endings
+        // ini_set('auto_detect_line_endings');
+        // mock data files!
+           
         /*
            
         $root->addChild(vfsStream::newFile('writeable.csv', 0666));
@@ -41,7 +40,7 @@ class DelimiterFinderTest extends PHPUnit_Framework_TestCase
     
     /**
      * Omitting a filepath as an argument to 
-     * the constructor raises a PHP Error
+     * the constructor triggers a PHP Error
      *
      * @group                       Constructor
      * @expectedException           PHPUnit_Framework_Error
