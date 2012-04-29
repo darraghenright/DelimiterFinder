@@ -1,35 +1,42 @@
 <?php
 
-require_once __DIR__ . '/../src/DelimiterFinder.php';
+
 require_once 'PHPUnit/Autoload.php';
+require_once 'vfsStream/vfsStream.php';
+
+require_once __DIR__ . '/../src/DelimiterFinder.php';
 
 class DelimiterFinderTest extends PHPUnit_Framework_TestCase
 {    
-    // find should match delimiter for files.. tab, comma, semicolon etc.
-    // find should match delimiter for custom delim
-    // find should return false for non match... files with no pattern, files with one line etc.
-    // find should throw exception for above if exception flag is set
     // test with different line endings.... dreaded mac excel CR line endings
-    //    ini_set('auto_detect_line_endings');
-    // replace files with file mocking
-    // use setup and teardown to implement mock files
+    // ini_set('auto_detect_line_endings');
+    // mock data files!
     
     /**
-     * Set up before tests
+     * Setup mock filesystem elements
      */
     public function setUp()
     {           
-        // make sure non-readable file is non-readable!
-        chmod(__DIR__ . '/files/not_readable.csv', 0000);
-    }
-    
-    /**
-     * Clean up after tests
-     */
-    public function tearDown()
-    {
-        // change perms so we can commit the file ;)
-        chmod(__DIR__ . '/files/not_readable.csv', 0444);
+        $root = vfsStream::newDirectory('files');
+        
+        vfsStreamWrapper::register();
+        vfsStreamWrapper::setRoot($root);       
+        
+        $root->addChild(vfsStream::newFile('non_readable_file.csv', 0000));
+        $root->addChild(vfsStream::newFile('readable_file.csv', 0444));
+        
+        /*
+           
+        $root->addChild(vfsStream::newFile('writeable.csv', 0666));
+        
+        $file = vfsStream::url('files/writeable.csv');
+        
+        file_put_contents($file, 'hi');
+            
+        $a = file($file);
+        var_dump($a);
+        exit();
+        */
     }
     
     /**
@@ -39,68 +46,48 @@ class DelimiterFinderTest extends PHPUnit_Framework_TestCase
      * @group                       Constructor
      * @expectedException           PHPUnit_Framework_Error
      */
-    public function testCreateObjectWithMissingArgument()
+    public function testCreateObjectWithMissingArgumentShouldRaiseError()
     {
         $finder = new DelimiterFinder();        
     }
     
     /**
-     * Providing a non-existent filepath as an argument to 
-     * the constructor raises an InvalidArgumentException
-     *
-     * @group                       Constructor
-     * @expectedException           InvalidArgumentException
-     * @expectedExceptionMessage    The file files/non_existent_file.csv does not exist
-     */
-    public function testCreateObjectWithNonExistentFile()
-    {
-        $filepath = 'files/non_existent_file.csv';
-        $this->assertFalse(is_file($filepath));
-        $finder = new DelimiterFinder($filepath);
-    }
-    
-    /**
-     * Providing a non-readable filepath as an argument to 
+     * Providing a non-existent file as an argument to 
      * the constructor throws an InvalidArgumentException
      *
      * @group                       Constructor
      * @expectedException           InvalidArgumentException
-     * @expectedExceptionMessage    The file files/not_readable.csv cannot be read
+     * @expectedExceptionMessage    The file "vfs://files/non_existent_file.csv" does not exist
      */
-    public function testCreateObjectWithNonReadableFile()
-    {   
-        $filepath = 'files/not_readable.csv';
-        $this->assertFileExists($filepath);
-        $finder = new DelimiterFinder($filepath);
-    }   
-
+    public function testCreateObjectWithNonExistentFileShouldRaiseException()
+    {
+        $file = vfsStream::url('files/non_existent_file.csv');
+        $this->assertFalse(is_file($file));
+        $finder = new DelimiterFinder($file);
+    }
+    
     /**
-     * Providing a filepath to an empty file as an argument 
-     * to the constructor throws an InvalidArgumentException
+     * Providing a non-readable file as an argument 
+     * to the constructor throws a RuntimeException
      *
      * @group                       Constructor
      * @expectedException           RuntimeException
-     * @expectedExceptionMessage    The file files/empty.csv is empty
+     * @expectedExceptionMessage    The file "vfs://files/non_readable_file.csv" is not readable
      */
-    public function testCreateObjectWithEmptyFile()
-    {
-        $filepath = 'files/empty.csv';
-        $this->assertFileExists($filepath);
-        $this->assertTrue(0 === filesize($filepath));
-        $finder = new DelimiterFinder($filepath);
-    }
+    public function testCreateObjectWithNonReadableFileShouldRaiseException()
+    {      
+        $finder = new DelimiterFinder(vfsStream::url('files/non_readable_file.csv'));
+    }   
         
     /**
-     * Providing a valid filepath as an argument 
+     * Providing a readable file as an argument 
      * to the constructor creates an instance
      *
      * @group                       Constructor
      */
-    public function testObjectCreateWithValidFile()
+    public function testObjectCreateWithReadableFileShouldPass()
     {    
-        $filepath = 'files/not_empty.csv';
-        $this->assertFileExists($filepath);
-        $finder = new DelimiterFinder($filepath);
+        $finder = new DelimiterFinder(vfsStream::url('files/readable_file.csv'));
         $this->assertInstanceOf('DelimiterFinder', $finder);
     }
 
@@ -110,16 +97,12 @@ class DelimiterFinderTest extends PHPUnit_Framework_TestCase
      * 
      * @group                       Add Delimiter
      */
-    public function testAddDelimiterWithSingleCharacter()
+    public function testAddDelimiterWithSingleCharacterShouldPass()
     {
-        
-        $filepath = 'files/not_empty.csv';
-        $this->assertFileExists($filepath);
-        
-        $delimiter = '|';
-        $finder = new DelimiterFinder($filepath);
-        $finder->addDelimiter($delimiter);
-        $this->assertContains($delimiter, $finder->getDelimiters());
+        $file = vfsStream::url('files/readable_file.csv');
+        $finder = new DelimiterFinder($file);
+        $finder->addDelimiter('|');
+        $this->assertContains('|', $finder->getDelimiters());
     }
     
     /**
@@ -131,12 +114,11 @@ class DelimiterFinderTest extends PHPUnit_Framework_TestCase
      * @expectedExceptionMessage    The delimiter "" is not a single character
      */
 
-    public function testAddDelimiterWithZeroLengthString()
+    public function testAddDelimiterWithZeroLengthStringShouldRaiseException()
     {
-        $filepath = 'files/not_empty.csv';
-        $this->assertFileExists($filepath);
-        $finder = new DelimiterFinder($filepath);
-        $finder->addDelimiter(''); 
+        $file = vfsStream::url('files/readable_file.csv');
+        $finder = new DelimiterFinder($file);
+        $finder->addDelimiter('');
     }
 
     /**
@@ -147,21 +129,19 @@ class DelimiterFinderTest extends PHPUnit_Framework_TestCase
      * @expectedException           UnexpectedValueException
      * @expectedExceptionMessage    The delimiter "--" is not a single character
      */
-
-    public function testAddDelimiterWithStringsLongerThanOneCharacter()
+    public function testAddDelimiterWithStringLongerThanOneCharacterShouldRaiseException()
     {
-        $filepath = 'files/not_empty.csv';
-        $this->assertFileExists($filepath);
-        $finder = new DelimiterFinder($filepath);
-        $finder->addDelimiter('--'); 
+        $file = vfsStream::url('files/readable_file.csv');
+        $finder = new DelimiterFinder($file);
+        $finder->addDelimiter('--');
     }
     
     /**
-     * Find comma
+     * Find and return comma for comma-delimited file
      *
-     * @group                       Find
+     * @group Find
      */
-    public function testFinderShouldReturnComma()
+    public function testFindForCommaDelimitedFileShouldReturnComma()
     {
         $filepath = 'files/delim_comma.csv';
         $this->assertFileExists($filepath);
@@ -170,12 +150,11 @@ class DelimiterFinderTest extends PHPUnit_Framework_TestCase
     }
 
     /**
-     * Find tab
+     * Find and return tab for tab-delimited file
      *
-     * @group                       Find
+     * @group Find
      */
-    
-    public function testFinderShouldReturnTab()
+    public function testFindForTabDelimitedFileShouldReturnTab()
     {
         $filepath = 'files/delim_tab.csv';
         $this->assertFileExists($filepath);
@@ -184,11 +163,11 @@ class DelimiterFinderTest extends PHPUnit_Framework_TestCase
     }
 
     /**
-     * Find semicolon
+     * Find and return semicolon for semicolon-delimited file
      *
-     * @group                       Find
+     * @group Find
      */
-    public function testFinderShouldReturnSemicolon()
+    public function testFindForSemicolonDelimitedFileShouldReturnSemicolon()
     {        
         $filepath = 'files/delim_semicolon.csv';
         $this->assertFileExists($filepath);
@@ -197,11 +176,12 @@ class DelimiterFinderTest extends PHPUnit_Framework_TestCase
     }
 
     /**
-     * Find custom
+     * Find and return pipe for pipe-delimited file    
      *
-     * @group                       Find
+     * @group Find
+     * @group Add Delimiter
      */
-    public function testFinderShouldReturnPipe()
+    public function testFindForPipeDelimitedFileShouldReturnPipe()
     {        
         $filepath = 'files/delim_custom.csv';
         $this->assertFileExists($filepath);

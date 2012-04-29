@@ -33,31 +33,12 @@ class DelimiterFinder
      */
     public function __construct($file)
     {
-        // TODO: refactor into validator method(s) once unit tested
-        
-        if (!is_file($file)) {
-            throw new InvalidArgumentException(sprintf(
-                'The file %s does not exist', $file
-            ));
-        }
-        
-        if (!is_readable($file)) {
-            throw new InvalidArgumentException(sprintf(
-                'The file %s cannot be read', $file
-            ));
-        }
-        
-        if (0 === filesize($file)) {
-            throw new RuntimeException(sprintf(
-                'The file %s is empty', $file
-            ));
-        }
-        
+        $this->validateFile($file);
         $this->file = $file;
     }
     
     /**
-     * Returns the list of currently registered delimiters
+     * Return an array of registered delimiters
      *
      * @return array
      */
@@ -67,15 +48,18 @@ class DelimiterFinder
     }
     
     /**
-     * Add a delimiter t the 
-     * @param string
+     * Add a new delimiter to the array 
+     * of registered delimiters
+     *
+     * @param  string
+     * @throws UnexpectedValueException
      */
     public function addDelimiter($delimiter)
     {
         if (1 !== strlen($delimiter)) {
-            throw new UnexpectedValueException(sprintf(
-                'The delimiter "%s" is not a single character', $delimiter
-            ));
+            throw new UnexpectedValueException(
+                sprintf('The delimiter "%s" is not a single character', $delimiter)
+            );
         }
     
         if (!in_array($delimiter, $this->delimiters)) {
@@ -84,7 +68,10 @@ class DelimiterFinder
     }
     
     /**
-     * Find!
+     * Perform the delimiter search if a match 
+     * has not been made and return the result
+     *
+     * @return mixed
      */
     public function find()
     {
@@ -94,13 +81,41 @@ class DelimiterFinder
         
         return $this->match;
     }
-        
+    
     /**
-     * Search
+     * Validate the file. Throw an exception if:
+     *
+     * * The file does not exist
+     * * The file is not readable
+     *
+     * @param  string $file
+     * @throws InvalidArgumentException
+     * @throws RuntimeException
+     */
+    protected function validateFile($file)
+    {
+        if (!is_file($file)) {
+            throw new InvalidArgumentException(
+                sprintf('The file "%s" does not exist', $file)
+            );
+        }
+        
+        if (!is_readable($file)) {
+            throw new RuntimeException(
+                sprintf('The file "%s" is not readable', $file)
+            );
+        }
+    }
+    
+    /**
+     * Determine a likely delimiter.
+     *
+     * Add doc and refactor this code
      */    
     protected function search()
     {
         $handle = fopen($this->file, 'r');
+        
         $regex  = sprintf('/[^%s]/', implode($this->delimiters));
         $lines  = array();
         $loops  = 0;
