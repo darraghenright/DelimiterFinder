@@ -1,67 +1,28 @@
 <?php
 
-
 require_once 'PHPUnit/Autoload.php';
 require_once 'vfsStream/vfsStream.php';
-
 require_once __DIR__ . '/../src/DelimiterFinder.php';
 
 class DelimiterFinderTest extends PHPUnit_Framework_TestCase
 {    
     /**
-     * Setup mock filesystem elements
+     * Setup mock filesystem elements 
      */
     public function setUp()
     {   
-        // test with different line endings.... dreaded mac excel CR line endings
-        // ini_set('auto_detect_line_endings');
+        vfsStreamWrapper::register();
         
         $root = vfsStream::newDirectory('files');
-        
-        vfsStreamWrapper::register();
-        vfsStreamWrapper::setRoot($root);
-        
-        // create some files
         $root->addChild(vfsStream::newFile('non_readable_file.csv', 0000));
         $root->addChild(vfsStream::newFile('readable_file.csv', 0444));           
         $root->addChild(vfsStream::newFile('delimited_comma.csv', 0666));
         $root->addChild(vfsStream::newFile('delimited_pipe.csv', 0666));
         $root->addChild(vfsStream::newFile('delimited_semicolon.csv', 0666));
         $root->addChild(vfsStream::newFile('delimited_tabbed.csv', 0666));
+        $root->addChild(vfsStream::newFile('line_ending_cr.csv', 0666));
         
-        // populate some files
-        $comma = <<<EOF
-Leonardo,blue,Katana
-Raphael,red,sai
-Michelangelo,orange,nunchaku
-Donatello,purple,bō staff
-EOF;
-
-        $pipe = <<<EOF
-Leonardo|blue|Katana
-Raphael|red|sai
-Michelangelo|orange|nunchaku
-Donatello|purple|bō staff
-EOF;
-
-        $semicolon = <<<EOF
-Leonardo;blue;Katana
-Raphael;red;sai
-Michelangelo;orange;nunchaku
-Donatello;purple;bō staff
-EOF;
-        
-        $tabbed = <<<EOF
-Leonardo\tblue\tKatana
-Raphael\tred\tsai
-Michelangelo\torange\tnunchaku
-Donatello\tpurple\tbō staff
-EOF;
-
-        file_put_contents(vfsStream::url('files/delimited_comma.csv'), $comma);
-        file_put_contents(vfsStream::url('files/delimited_pipe.csv'), $pipe);
-        file_put_contents(vfsStream::url('files/delimited_semicolon.csv'), $semicolon);
-        file_put_contents(vfsStream::url('files/delimited_tabbed.csv'), $tabbed);        
+        vfsStreamWrapper::setRoot($root);
     }
     
     /**
@@ -100,8 +61,9 @@ EOF;
      * @expectedExceptionMessage    The file "vfs://files/non_readable_file.csv" is not readable
      */
     public function testCreateObjectWithNonReadableFileShouldRaiseException()
-    {      
-        $finder = new DelimiterFinder(vfsStream::url('files/non_readable_file.csv'));
+    {   
+        $file = vfsStream::url('files/non_readable_file.csv');
+        $finder = new DelimiterFinder($file);
     }   
         
     /**
@@ -112,7 +74,8 @@ EOF;
      */
     public function testObjectCreateWithReadableFileShouldPass()
     {    
-        $finder = new DelimiterFinder(vfsStream::url('files/readable_file.csv'));
+        $file = vfsStream::url('files/readable_file.csv');
+        $finder = new DelimiterFinder($file);
         $this->assertInstanceOf('DelimiterFinder', $finder);
     }
 
@@ -124,7 +87,8 @@ EOF;
      */
     public function testAddDelimiterWithSingleCharacterShouldPass()
     {
-        $finder = new DelimiterFinder(vfsStream::url('files/readable_file.csv'));
+        $file = vfsStream::url('files/readable_file.csv');
+        $finder = new DelimiterFinder($file);
         $finder->addDelimiter('|');
         $this->assertContains('|', $finder->getDelimiters());
     }
@@ -140,7 +104,8 @@ EOF;
 
     public function testAddDelimiterWithZeroLengthStringShouldRaiseException()
     {
-        $finder = new DelimiterFinder(vfsStream::url('files/readable_file.csv'));
+        $file = vfsStream::url('files/readable_file.csv');
+        $finder = new DelimiterFinder($file);
         $finder->addDelimiter('');
     }
 
@@ -154,7 +119,8 @@ EOF;
      */
     public function testAddDelimiterWithStringLongerThanOneCharacterShouldRaiseException()
     {
-        $finder = new DelimiterFinder(vfsStream::url('files/readable_file.csv'));
+        $file = vfsStream::url('files/readable_file.csv');
+        $finder = new DelimiterFinder($file);
         $finder->addDelimiter('--');
     }
     
@@ -165,7 +131,15 @@ EOF;
      */
     public function testFindForCommaDelimitedFileShouldReturnComma()
     {
-        $finder = new DelimiterFinder(vfsStream::url('files/delimited_comma.csv'));        
+        $data = <<<EOL
+Leonardo,blue,Katana
+Raphael,red,sai
+Michelangelo,orange,nunchaku
+Donatello,purple,bō staff
+EOL;
+
+        file_put_contents(vfsStream::url('files/delimited_comma.csv'), $data);
+        $finder = new DelimiterFinder(vfsStream::url('files/delimited_comma.csv'));
         $this->assertEquals($finder->find(), ',');
     }
 
@@ -176,6 +150,14 @@ EOF;
      */
     public function testFindForTabDelimitedFileShouldReturnTab()
     {
+        $data = <<<EOL
+Leonardo\tblue\tKatana
+Raphael\tred\tsai
+Michelangelo\torange\tnunchaku
+Donatello\tpurple\tbō staff
+EOL;
+        
+        file_put_contents(vfsStream::url('files/delimited_tabbed.csv'), $data); 
         $finder = new DelimiterFinder(vfsStream::url('files/delimited_tabbed.csv'));
         $this->assertEquals($finder->find(), "\t");
     }
@@ -187,10 +169,18 @@ EOF;
      */
     public function testFindForSemicolonDelimitedFileShouldReturnSemicolon()
     {        
+        $data = <<<EOL
+Leonardo;blue;Katana
+Raphael;red;sai
+Michelangelo;orange;nunchaku
+Donatello;purple;bō staff
+EOL;
+
+        file_put_contents(vfsStream::url('files/delimited_semicolon.csv'), $data);
         $finder = new DelimiterFinder(vfsStream::url('files/delimited_semicolon.csv'));
         $this->assertEquals($finder->find(), ';');
     }
-
+        
     /**
      * Find and return pipe for pipe-delimited file    
      *
@@ -199,8 +189,34 @@ EOF;
      */
     public function testFindForPipeDelimitedFileShouldReturnPipe()
     {        
+        $data = <<<EOL
+Leonardo|blue|Katana
+Raphael|red|sai
+Michelangelo|orange|nunchaku
+Donatello|purple|bō staff
+EOL;
+
+        file_put_contents(vfsStream::url('files/delimited_pipe.csv'), $data);
         $finder = new DelimiterFinder(vfsStream::url('files/delimited_pipe.csv'));
         $finder->addDelimiter('|');
         $this->assertEquals($finder->find(), '|');
-    }    
+    }
+    
+    // if the first two lines are ambiguous the third line should define (mixed same numer delims)
+    // if the delimiters are mixed but theres no pattern return false
+    // if the first line is blank return false
+    // test different line endings: LF CR CRLF
+    /*
+    public function testAutoDetectLineEndings()
+    {        
+        ini_set('auto_detect_line_endings', true);
+        $data = "Leonardo,blue,Katana\rRaphael,red,sai\rMichelangelo,orange,nunchaku\rDonatello,purple,bō staff\r";
+        file_put_contents(vfsStream::url('files/line_ending_cr.csv'), $data);
+    
+        
+        $finder = new DelimiterFinder(vfsStream::url('files/line_ending_cr.csv'));
+        $this->assertEquals($finder->find(), false, 'A');
+        $this->assertEquals($finder->find(true), ',', 'B');
+    }
+    */
 }
