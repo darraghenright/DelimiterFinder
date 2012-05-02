@@ -21,7 +21,7 @@ class DelimiterFinderTest extends PHPUnit_Framework_TestCase
         $root->addChild(vfsStream::newFile('delimited_semicolon.csv', 0666));
         $root->addChild(vfsStream::newFile('delimited_tabbed.csv', 0666));
         $root->addChild(vfsStream::newFile('line_ending_cr.csv', 0666));
-        
+                
         vfsStreamWrapper::setRoot($root);
     }
     
@@ -200,6 +200,30 @@ EOL;
         $finder = new DelimiterFinder(vfsStream::url('files/delimited_pipe.csv'));
         $finder->addDelimiter('|');
         $this->assertEquals($finder->find(), '|');
+    }
+
+    /**
+     * Perform a standard find on a data source 
+     * with a custom delimiter, with and without 
+     * explicitly setting a custom delimiter.
+     *
+     * @group Find
+     * @group Add Delimiter
+     */
+    public function testFindForCustomDelimiterShouldInitiallyReturnFalseUntilExplicitlySet()
+    {        
+        $data = <<<EOL
+Leonardo|blue|Katana
+Raphael|red|sai
+Michelangelo|orange|nunchaku
+Donatello|purple|bō staff
+EOL;
+
+        file_put_contents(vfsStream::url('files/delimited_pipe.csv'), $data);
+        $finder = new DelimiterFinder(vfsStream::url('files/delimited_pipe.csv'));
+        $this->assertFalse($finder->find());
+        $finder->addDelimiter('|');
+        $this->assertEquals($finder->find(), '|');        
     }
     
     // if the first two lines are ambiguous the third line should define (mixed same numer delims)
