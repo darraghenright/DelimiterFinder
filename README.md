@@ -31,7 +31,7 @@ Assuming all went smoothly to this point,
 it's time to try to guess the delimiter.
 
 The class searches for a likely delimiter 
-from the following lost of usual suspects: 
+from the following list of usual suspects: 
 
 * comma (`,`), tab (`\t`) or semicolon (`;`)
 
